@@ -10,6 +10,7 @@
 #include <linux/skbuff.h>
 #include <linux/ip.h>
 #include <linux/proc_fs.h>
+#include <linux/string.h>
 #include <asm/atomic.h>
 #include <net/ip.h>
 #include <net/route.h>
@@ -35,22 +36,21 @@ static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
 
 static atomic_t start;
 
+#define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
 
-
-static int
-netdevgen_thread (void * arg)
+static struct sk_buff *
+netdevgen_build_packet (void)
 {
-	struct sk_buff * skb, * pskb;
+	struct sk_buff * skb;
 	struct iphdr * ip;
+	struct udphdr * udp;
 	struct flowi4 fl4;
 	struct rtable * rt;
 	struct net * net = get_net_ns_by_pid (1);
 
-	ndg_thread_running = true;
-
 	if (!net) {
-		printk ("failed to get netns by pid 1\n");
-		goto err_out;
+		pr_err ("failed to get netns by pid 1\n");
+		return NULL;
 	}
 
 	/* alloc and build skb */
@@ -58,31 +58,72 @@ netdevgen_thread (void * arg)
 	skb->protocol = htons (ETH_P_IP);
 	skb_put (skb, pktlen);
 	skb_set_network_header (skb, 0);
+	skb_set_transport_header (skb, sizeof (*ip));
 
 	ip = (struct iphdr *) skb_network_header (skb);
-	ip->ihl = 5;
-	ip->version = 4;
-	ip->tos = 0;
-	ip->tot_len = pktlen;
-	ip->id = 0;
-	ip->frag_off = 0;
-	ip->ttl = 12;
-	ip->protocol = IPPROTO_UDP;	
-	ip->check = 0;
-	ip->saddr = srcip;
-	ip->daddr = dstip;
+	ip->ihl		= 5;
+	ip->version	= 4;
+	ip->tos		= 0;
+	ip->tot_len	= htons (pktlen);
+	ip->id		= 0;
+	ip->frag_off	= 0;
+	ip->ttl		= 12;
+	ip->protocol	= IPPROTO_UDP;	
+	ip->check	= 0;
+	ip->saddr	= srcip;
+	ip->daddr	= dstip;
+
+	udp = (struct udphdr *) skb_transport_header (skb);
+	udp->check	= 0;
+	udp->source	= 0;
+	udp->dest	= 0;
+	udp->len	= htons (pktlen - sizeof (*ip));
 
 	memset (&fl4, 0, sizeof (fl4));
 	fl4.saddr = srcip;
 	fl4.daddr = dstip;
 	rt = ip_route_output_key (net, &fl4);
 	if (IS_ERR (rt)) {
-		printk ("no route to %pI4\n", &dstip);
-		goto err_out;
+		pr_err ("no route to %pI4 from %pI4\n", &dstip, &srcip);
+		return NULL;
 	}
 	skb_dst_drop (skb);
 	skb_dst_set (skb, &rt->dst);
+	
+	return skb;
+}
 
+static void
+netdevgen_xmit_one (void)
+{
+	struct sk_buff * skb;
+	unsigned long long tsc;
+
+	skb = netdevgen_build_packet ();
+	if (!skb) {
+		pr_err ("skb build failed\n");
+		return;
+	}
+
+#define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr))
+	RDTSC (tsc);
+	*((unsigned long long *) (skb->data + HDRROOM)) = 11;
+
+	ip_local_out (skb);
+}
+
+static int
+netdevgen_thread (void * arg)
+{
+	struct sk_buff * skb, * pskb;
+
+	ndg_thread_running = true;
+
+	skb = netdevgen_build_packet ();
+	if (!skb) {
+		pr_err ("skb build failed\n");
+		goto err_out;
+	}
 
 	while (!kthread_should_stop ()) {
 
@@ -92,7 +133,7 @@ netdevgen_thread (void * arg)
 
 		pskb = skb_clone (skb, GFP_KERNEL);
 		if (!pskb) {
-			printk (KERN_ERR "failed to clone skb\n");
+			pr_err ("failed to clone skb\n");
 			continue;
 		}
 
@@ -103,33 +144,47 @@ err_out:
 	//kfree_skb (skb);
 	ndg_thread_running = false;
 
-	printk (KERN_INFO "netdevgen thread finished\n");
+	pr_info ("netdevgen thread finished\n");
 
 	return 0;
 }
 
 
 static void
+start_netdevgen_thread (void)
+{
+	if (!atomic_read (&start)) {
+		pr_info ("netdevgen: thread start\n");
+		atomic_set (&start, 1);
+		ndg_tsk = kthread_run (netdevgen_thread, NULL, "netdevgen");
+	}
+}
+
+static void
+stop_netdevgen_thread (void)
+{
+	if (!atomic_read (&start)) {
+		pr_info ("netdevgen: thread stop\n");
+		atomic_set (&start, 0);
+	}
+}
+
+static void
 start_stop (void)
 {
 	if (atomic_read (&start)) {
-		printk ("netdevgen: start -> stop\n");
-		atomic_set (&start, 0);
+		pr_info ("netdevgen: start -> stop\n");
+		stop_netdevgen_thread ();
 	} else {
-		printk ("netdevgen: stop -> start\n");
-		atomic_set (&start, 1);
-	}
-
-	if (atomic_read (&start)) {
-		printk (KERN_INFO "restart thread\n");
-		ndg_tsk = kthread_run (netdevgen_thread, NULL, "netdevgen");
+		pr_info ("netdevgen: stop -> start\n");
+		start_netdevgen_thread ();
 	}
 }
 
 static ssize_t
 proc_read(struct file *fp, char *buf, size_t size, loff_t *off)
 {
-	printk (KERN_INFO "proc read\n");
+	pr_info ("proc read\n");
 
 	//copy_to_user (buf, "stop!\n", size);
 	start_stop ();
@@ -139,8 +194,18 @@ proc_read(struct file *fp, char *buf, size_t size, loff_t *off)
 static ssize_t
 proc_write(struct file *fp, const char *buf, size_t size, loff_t *off)
 {
-        printk("proc write\n");
-	start_stop ();
+        pr_info ("proc write\n");
+
+	if (strncmp (buf, "xmit", 4) == 0) {
+		netdevgen_xmit_one ();
+	} else if (strncmp (buf, "start", 5) == 0) {
+		start_netdevgen_thread ();
+	} else if (strncmp (buf, "stop", 4) == 0) {
+		stop_netdevgen_thread ();
+	} else {
+		pr_info ("invalid command\n");
+	}
+
         return size;
 }
 
@@ -164,11 +229,11 @@ netdevgen_init (void)
 	atomic_set (&start, 0);
 
 	if (IS_ERR (ndg_tsk)) {
-		printk (KERN_ERR "failed to run netdevgen thread\n");
+		pr_err ("failed to run netdevgen thread\n");
 		return -1;
 	}
 
-	printk (KERN_INFO "netdevgen loaded\n");
+	pr_info ("netdevgen loaded\n");
 		
 	return 0;
 }
@@ -181,10 +246,10 @@ netdevgen_exit (void)
 	if (ndg_tsk && ndg_thread_running)
 		kthread_stop (ndg_tsk);
 	else {
-		printk (KERN_INFO "thread is already done\n");
+		pr_info ("thread is already done\n");
 	}
 
-	printk (KERN_INFO "netdevgen unloaded\n");
+	pr_info ("netdevgen unloaded\n");
 
 	return;
 }

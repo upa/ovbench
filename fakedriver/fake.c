@@ -29,6 +29,10 @@ MODULE_ALIAS_RTNL_LINK ("fake");
 static int fake_net_id;
 static u32 fake_salt __read_mostly;
 
+static int check_timestamp __read_mostly = 1;
+module_param_named (timestamp, check_timestamp, int, 0444);
+MODULE_PARM_DESC (timestamp, "check time stamp");
+
 struct fake_dev {
 	struct list_head	list;
 	struct rcu_head		rcu;
@@ -39,11 +43,24 @@ struct fake_net {
 	struct list_head	dev_list;	/* device list */
 };
 
+#define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
 
 static netdev_tx_t
 fake_xmit (struct sk_buff * skb, struct net_device * dev)
 {
+	unsigned long long tsc, tsc_start;
 	struct pcpu_sw_netstats * tx_stats;
+
+	RDTSC (tsc);
+
+#define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr) + \
+		 sizeof (struct ethhdr))
+
+	if (check_timestamp) {
+		tsc_start = *((unsigned long long *) (skb->data + HDRROOM));
+		pr_info ("timestamp: start %llu, xmit %llu, clock %llu\n",
+			 tsc_start, tsc, tsc - tsc_start);
+	}
 
 	tx_stats = this_cpu_ptr (dev->tstats);
 	u64_stats_update_begin (&tx_stats->syncp);

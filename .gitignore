@@ -10,3 +10,4 @@ refresh.sh
 modules.order
 Module.symvers
 *.out
+test
