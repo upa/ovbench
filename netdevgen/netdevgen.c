@@ -22,7 +22,7 @@ MODULE_DESCRIPTION ("netdevgen");
 MODULE_LICENSE ("GPL");
 
 static bool ndg_thread_running;
-static struct task_struct * ndg_tsk;
+static struct task_struct * ndg_tsk, * ndg_one_tsk;
 
 static int pktlen = 50;
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
@@ -37,6 +37,13 @@ static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
 static atomic_t start;
 
 #define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
+
+static inline unsigned long long
+rdtsc(void) {
+	unsigned long long ret;
+	__asm__ volatile ("rdtsc" : "=A" (ret));
+	return ret;
+}
 
 static struct sk_buff *
 netdevgen_build_packet (void)
@@ -106,10 +113,17 @@ netdevgen_xmit_one (void)
 	}
 
 #define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr))
-	RDTSC (tsc);
+	//tsc = rdtsc ();
 	*((unsigned long long *) (skb->data + HDRROOM)) = 11;
 
 	ip_local_out (skb);
+}
+
+static int
+netdevgen_xmit_one_thread (void * arg)
+{
+	netdevgen_xmit_one ();
+	return 0;
 }
 
 static int
@@ -170,6 +184,13 @@ stop_netdevgen_thread (void)
 }
 
 static void
+start_netdevgen_xmit_one_thread (void)
+{
+	ndg_one_tsk = kthread_run (netdevgen_xmit_one_thread,
+				   NULL, "netdevgen");
+}
+
+static void
 start_stop (void)
 {
 	if (atomic_read (&start)) {
@@ -197,7 +218,7 @@ proc_write(struct file *fp, const char *buf, size_t size, loff_t *off)
         pr_info ("proc write\n");
 
 	if (strncmp (buf, "xmit", 4) == 0) {
-		netdevgen_xmit_one ();
+		start_netdevgen_xmit_one_thread ();
 	} else if (strncmp (buf, "start", 5) == 0) {
 		start_netdevgen_thread ();
 	} else if (strncmp (buf, "stop", 4) == 0) {
