@@ -18,6 +18,19 @@
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
 
+#define HDRROOM (sizeof (struct ethhdr) + sizeof (struct iphdr) + \
+		 sizeof (struct udphdr))
+
+#define HDRROOM_NOENCAP	HDRROOM
+#define HDRROOM_VXLAN	HDRROOM + 8 + HDRROOM
+#define HDRROOM_GRETAP	34 + 4 + HDRROOM
+#define HDRROOM_GRE	HDRROOM_GRETAP - sizeof (struct ethhdr)
+#define HDRROOM_IPIP	34 + HDRROOM - sizeof (struct ethhdr)
+#define HDRROOM_NSH	HDRROOM + 8 + 24 + HDRROOM
+
+#define HDRROOM_TIMESTAMP HDRROOM_IPIP
+
+
 #define FAKE_VERSION	"0.0.0"
 MODULE_VERSION (FAKE_VERSION);
 MODULE_LICENSE ("GPL");
@@ -44,22 +57,32 @@ struct fake_net {
 };
 
 #define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
+static uint64_t
+rdtsc(void)
+{
+	uint32_t lo, hi;
+	__asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+	return (uint64_t)hi << 32 | lo;
+}
+
+
 
 static netdev_tx_t
 fake_xmit (struct sk_buff * skb, struct net_device * dev)
 {
-	unsigned long long tsc, tsc_start;
+	uint64_t tsc, tsc_start;
 	struct pcpu_sw_netstats * tx_stats;
 
-	RDTSC (tsc);
+	tsc = rdtsc ();
 
-#define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr) + \
-		 sizeof (struct ethhdr))
 
 	if (check_timestamp) {
-		tsc_start = *((unsigned long long *) (skb->data + HDRROOM));
-		pr_info ("timestamp: start %llu, xmit %llu, clock %llu\n",
-			 tsc_start, tsc, tsc - tsc_start);
+		tsc_start = *((uint64_t *) (skb->data + HDRROOM_TIMESTAMP));
+		if (tsc_start < tsc) {
+			pr_info ("timestamp: start:%llu, xmit:%llu, "
+				 "clock:%llu\n",
+				 tsc_start, tsc, tsc - tsc_start);
+		}
 	}
 
 	tx_stats = this_cpu_ptr (dev->tstats);

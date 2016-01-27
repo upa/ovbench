@@ -17,6 +17,7 @@
 #include <net/net_namespace.h>
 
 
+
 MODULE_AUTHOR ("upa@haeena.net");
 MODULE_DESCRIPTION ("netdevgen");
 MODULE_LICENSE ("GPL");
@@ -28,22 +29,52 @@ static int pktlen = 50;
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
 //static __be32 dstip = 0x02010A0A; /* 10.10.1.2 */
 
+#define IPIP_MODE
+
+#ifdef VXLAN_MODE
+static __be32 srcip = 0x010110AC; /* 172.16.1.1 */
+static __be32 dstip = 0x020110AC; /* 172.16.1.2 */
+#endif
+
+#ifdef GRETAP_MODE
+static __be32 srcip = 0x010210AC; /* 172.16.2.1 */
+static __be32 dstip = 0x020210AC; /* 172.16.2.2 */
+#endif
+
+#ifdef GRE_MODE
+static __be32 srcip = 0x010310AC; /* 172.16.3.1 */
+static __be32 dstip = 0x020310AC; /* 172.16.3.2 */
+#endif
+
+#ifdef IPIP_MODE
+static __be32 srcip = 0x010510AC; /* 172.16.4.1 */
+static __be32 dstip = 0x020510AC; /* 172.16.4.2 */
+#endif
+
+#ifdef NSH_MODE
+static __be32 srcip = 0x010410AC; /* 172.16.4.1 */
+static __be32 dstip = 0x020410AC; /* 172.16.4.2 */
+#endif
+
+#ifdef NOENCAP_MODE
 static __be32 srcip = 0x010010AC; /* 172.16.0.1 */
 static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
+#endif
 
 
 #define PROC_NAME "driver/netdevgen"
 
 static atomic_t start;
 
-#define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
 
-static inline unsigned long long
-rdtsc(void) {
-	unsigned long long ret;
-	__asm__ volatile ("rdtsc" : "=A" (ret));
-	return ret;
+static uint64_t
+rdtsc(void)
+{
+	uint32_t lo, hi;
+	__asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+	return (uint64_t)hi << 32 | lo;
 }
+
 
 static struct sk_buff *
 netdevgen_build_packet (void)
@@ -104,7 +135,7 @@ static void
 netdevgen_xmit_one (void)
 {
 	struct sk_buff * skb;
-	unsigned long long tsc;
+	uint64_t tsc;
 
 	skb = netdevgen_build_packet ();
 	if (!skb) {
@@ -113,8 +144,8 @@ netdevgen_xmit_one (void)
 	}
 
 #define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr))
-	//tsc = rdtsc ();
-	*((unsigned long long *) (skb->data + HDRROOM)) = 11;
+	tsc = rdtsc ();
+	*((uint64_t *) (skb->data + HDRROOM)) = tsc;
 
 	ip_local_out (skb);
 }
@@ -123,6 +154,7 @@ static int
 netdevgen_xmit_one_thread (void * arg)
 {
 	netdevgen_xmit_one ();
+
 	return 0;
 }
 
@@ -215,8 +247,6 @@ proc_read(struct file *fp, char *buf, size_t size, loff_t *off)
 static ssize_t
 proc_write(struct file *fp, const char *buf, size_t size, loff_t *off)
 {
-        pr_info ("proc write\n");
-
 	if (strncmp (buf, "xmit", 4) == 0) {
 		start_netdevgen_xmit_one_thread ();
 	} else if (strncmp (buf, "start", 5) == 0) {
