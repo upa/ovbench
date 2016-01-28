@@ -22,6 +22,8 @@
 
 #include "nshkmod.h"
 
+#include "../ovbench.h"
+
 /*
  *
  * Network Service Header format.
@@ -378,6 +380,10 @@ static int nsh_xmit_vxlan(struct sk_buff *skb, struct nsh_net *nnet,
 	struct rtable *rt;
 	struct vxlanhdr *vxh;
 
+	if (OVTYPE_IS_NSH (skb)) {
+		nsh_xmit_vxlan_in (skb) = rdtsc ();
+	}
+
 	memset(&fl4, 0, sizeof(fl4));
 	fl4.daddr = nt->rdst->remote_ip;
 	fl4.saddr = nt->rdst->local_ip;
@@ -449,6 +455,10 @@ static netdev_tx_t nsh_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct nsh_base_hdr *nbh;
 	struct nsh_path_hdr *nph;
 	struct nsh_ctx_type1 *ctx;
+
+	if (OVTYPE_IS_NSH (skb)) {
+		nsh_xmit_in (skb) = rdtsc ();
+	}
 
 	nt = nsh_find_table(nnet, ndev->key);
 	if (!nt) {

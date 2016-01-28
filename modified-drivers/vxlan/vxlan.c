@@ -50,6 +50,8 @@
 #include <net/ip6_checksum.h>
 #endif
 
+#include "../ovbench.h"
+
 #define VXLAN_VERSION	"0.1"
 
 #define PORT_HASH_BITS	8
@@ -1628,6 +1630,10 @@ int vxlan_xmit_skb(struct vxlan_sock *vs,
 	int err;
 	bool udp_sum = !vs->sock->sk->sk_no_check_tx;
 
+	if (OVTYPE_IS_VXLAN (skb)) {
+		vxlan_vxlan_xmit_skb_in (skb) = rdtsc ();
+	}
+
 	skb = udp_tunnel_handle_offloads(skb, udp_sum);
 	if (IS_ERR(skb))
 		return PTR_ERR(skb);
@@ -1716,6 +1722,10 @@ static void vxlan_xmit_one(struct sk_buff *skb, struct net_device *dev,
 	__be16 df = 0;
 	__u8 tos, ttl;
 	int err;
+
+	if (OVTYPE_IS_VXLAN (skb)) {
+		vxlan_vxlan_xmit_one_in (skb) = rdtsc ();
+	}
 
 	dst_port = rdst->remote_port ? rdst->remote_port : vxlan->dst_port;
 	vni = rdst->remote_vni;
@@ -1873,6 +1883,10 @@ static netdev_tx_t vxlan_xmit(struct sk_buff *skb, struct net_device *dev)
 	bool did_rsc = false;
 	struct vxlan_rdst *rdst, *fdst = NULL;
 	struct vxlan_fdb *f;
+
+	if (OVTYPE_IS_VXLAN (skb)) {
+		vxlan_vxlan_xmit_in (skb) = rdtsc ();
+	}
 
 	skb_reset_mac_header(skb);
 	eth = eth_hdr(skb);

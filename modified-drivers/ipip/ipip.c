@@ -117,6 +117,8 @@
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
 
+#include "../ovbench.h"
+
 static bool log_ecn_error = true;
 module_param(log_ecn_error, bool, 0644);
 MODULE_PARM_DESC(log_ecn_error, "Log packets received with corrupted ECN");
@@ -216,6 +218,10 @@ static netdev_tx_t ipip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ip_tunnel *tunnel = netdev_priv(dev);
 	const struct iphdr  *tiph = &tunnel->parms.iph;
+
+	if (OVTYPE_IS_IPIP (skb)) {
+		ipip_ipip_tunnel_xmit_in (skb) = rdtsc ();
+	}
 
 	if (unlikely(skb->protocol != htons(ETH_P_IP)))
 		goto tx_error;

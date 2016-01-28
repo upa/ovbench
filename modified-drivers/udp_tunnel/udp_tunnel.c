@@ -8,6 +8,8 @@
 #include <net/udp_tunnel.h>
 #include <net/net_namespace.h>
 
+#include "../ovbench.h"
+
 int udp_sock_create4(struct net *net, struct udp_port_cfg *cfg,
 		     struct socket **sockp)
 {
@@ -82,6 +84,10 @@ int udp_tunnel_xmit_skb(struct socket *sock, struct rtable *rt,
 {
 	struct udphdr *uh;
 
+	if (OVTYPE (skb)) {
+		udp_tunnel_xmit_skb_in (skb) = rdtsc ();
+	}
+
 	__skb_push(skb, sizeof(*uh));
 	skb_reset_transport_header(skb);
 	uh = udp_hdr(skb);
@@ -91,6 +97,10 @@ int udp_tunnel_xmit_skb(struct socket *sock, struct rtable *rt,
 	uh->len = htons(skb->len);
 
 	udp_set_csum(sock->sk->sk_no_check_tx, skb, src, dst, skb->len);
+
+	if (OVTYPE (skb)) {
+		udp_tunnel_xmit_skb_end (skb) = rdtsc ();
+	}
 
 	return iptunnel_xmit(sock->sk, rt, skb, src, dst, IPPROTO_UDP,
 			     tos, ttl, df, xnet);

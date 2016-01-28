@@ -63,6 +63,8 @@
 #include <net/ip6_route.h>
 #endif
 
+#include "../ovbench.h"
+
 static unsigned int ip_tunnel_hash(__be32 key, __be32 remote)
 {
 	return hash_32((__force u32)key ^ (__force u32)remote,
@@ -648,6 +650,10 @@ void ip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
 	int err;
 	bool connected;
 
+	if (OVTYPE (skb)) {
+		ip_tunnel_xmit_in (skb) = rdtsc ();
+	}
+
 	inner_iph = (const struct iphdr *)skb_inner_network_header(skb);
 	connected = (tunnel->parms.iph.daddr != 0);
 
@@ -781,6 +787,10 @@ void ip_tunnel_xmit(struct sk_buff *skb, struct net_device *dev,
 		dev->stats.tx_dropped++;
 		kfree_skb(skb);
 		return;
+	}
+
+	if (OVTYPE(skb)) {
+		ip_tunnel_xmit_end (skb) = rdtsc ();
 	}
 
 	err = iptunnel_xmit(skb->sk, rt, skb, fl4.saddr, fl4.daddr, protocol,
