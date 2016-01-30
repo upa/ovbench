@@ -16,6 +16,7 @@
 #include <net/route.h>
 #include <net/net_namespace.h>
 
+#include "../modified-drivers/ovbench.h"
 
 
 MODULE_AUTHOR ("upa@haeena.net");
@@ -34,6 +35,7 @@ static int pktlen = 50;
 #ifdef VXLAN_MODE
 static __be32 srcip = 0x010110AC; /* 172.16.1.1 */
 static __be32 dstip = 0x020110AC; /* 172.16.1.2 */
+#define OVTYPE_MODE OVTYPE_VXLAN
 #endif
 
 #ifdef GRETAP_MODE
@@ -44,21 +46,25 @@ static __be32 dstip = 0x020210AC; /* 172.16.2.2 */
 #ifdef GRE_MODE
 static __be32 srcip = 0x010310AC; /* 172.16.3.1 */
 static __be32 dstip = 0x020310AC; /* 172.16.3.2 */
+#define OVTYPE_MODE OVTYPE_GRE
 #endif
 
 #ifdef IPIP_MODE
 static __be32 srcip = 0x010510AC; /* 172.16.4.1 */
 static __be32 dstip = 0x020510AC; /* 172.16.4.2 */
+#define OVTYPE_MODE OVTYPE_IPIP
 #endif
 
 #ifdef NSH_MODE
 static __be32 srcip = 0x010410AC; /* 172.16.4.1 */
 static __be32 dstip = 0x020410AC; /* 172.16.4.2 */
+#define OVTYPE_MODE OVTYPE_NSH
 #endif
 
 #ifdef NOENCAP_MODE
 static __be32 srcip = 0x010010AC; /* 172.16.0.1 */
 static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
+#define OVTYPE_MODE 0
 #endif
 
 
@@ -66,14 +72,6 @@ static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
 
 static atomic_t start;
 
-
-static uint64_t
-rdtsc(void)
-{
-	uint32_t lo, hi;
-	__asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-	return (uint64_t)hi << 32 | lo;
-}
 
 
 static struct sk_buff *
@@ -128,6 +126,8 @@ netdevgen_build_packet (void)
 	skb_dst_drop (skb);
 	skb_dst_set (skb, &rt->dst);
 	
+	skb->ovbench_type = OVTYPE_MODE;
+
 	return skb;
 }
 
@@ -135,7 +135,6 @@ static void
 netdevgen_xmit_one (void)
 {
 	struct sk_buff * skb;
-	uint64_t tsc;
 
 	skb = netdevgen_build_packet ();
 	if (!skb) {
@@ -143,9 +142,7 @@ netdevgen_xmit_one (void)
 		return;
 	}
 
-#define HDRROOM (sizeof (struct iphdr) + sizeof (struct udphdr))
-	tsc = rdtsc ();
-	*((uint64_t *) (skb->data + HDRROOM)) = tsc;
+	netdevgen_xmit (skb) = rdtsc ();
 
 	ip_local_out (skb);
 }

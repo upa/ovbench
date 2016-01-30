@@ -22,3 +22,5 @@ clean:
 	rm -f *.ko
 	rm -f *.mod.c
 	rm -f *~
+	rm -f Module.symvers
+	rm -f modules.order

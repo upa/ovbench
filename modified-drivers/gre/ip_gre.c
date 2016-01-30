@@ -234,6 +234,10 @@ static void __gre_xmit(struct sk_buff *skb, struct net_device *dev,
 	struct ip_tunnel *tunnel = netdev_priv(dev);
 	struct tnl_ptk_info tpi;
 
+	if (OVTYPE_IS_GRE (skb)) {
+		gre_gre_xmit_in (skb) = rdtsc ();
+	}
+
 	tpi.flags = tunnel->parms.o_flags;
 	tpi.proto = proto;
 	tpi.key = tunnel->parms.o_key;
@@ -254,6 +258,10 @@ static netdev_tx_t ipgre_xmit(struct sk_buff *skb,
 {
 	struct ip_tunnel *tunnel = netdev_priv(dev);
 	const struct iphdr *tnl_params;
+
+	if (OVTYPE_IS_GRE (skb)) {
+		gre_ipgre_xmit_in (skb) = rdtsc ();
+	}
 
 	if (dev->header_ops) {
 		/* Need space for new headers */

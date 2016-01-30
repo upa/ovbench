@@ -18,6 +18,9 @@
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
 
+#include "../modified-drivers/ovbench.h"
+
+
 #define HDRROOM (sizeof (struct ethhdr) + sizeof (struct iphdr) + \
 		 sizeof (struct udphdr))
 
@@ -42,9 +45,6 @@ MODULE_ALIAS_RTNL_LINK ("fake");
 static int fake_net_id;
 static u32 fake_salt __read_mostly;
 
-static int check_timestamp __read_mostly = 1;
-module_param_named (timestamp, check_timestamp, int, 0444);
-MODULE_PARM_DESC (timestamp, "check time stamp");
 
 struct fake_dev {
 	struct list_head	list;
@@ -56,34 +56,77 @@ struct fake_net {
 	struct list_head	dev_list;	/* device list */
 };
 
-#define RDTSC(ret) __asm__ volatile ("rdtsc" : "=A" (ret))
-static uint64_t
-rdtsc(void)
-{
-	uint32_t lo, hi;
-	__asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-	return (uint64_t)hi << 32 | lo;
-}
-
 
 
 static netdev_tx_t
 fake_xmit (struct sk_buff * skb, struct net_device * dev)
 {
-	uint64_t tsc, tsc_start;
+	uint64_t tsc;
 	struct pcpu_sw_netstats * tx_stats;
 
 	tsc = rdtsc ();
 
+	if (OVTYPE_IS_IPIP (skb)) {
 
-	if (check_timestamp) {
-		tsc_start = *((uint64_t *) (skb->data + HDRROOM_TIMESTAMP));
-		if (tsc_start < tsc) {
-			pr_info ("timestamp: start:%llu, xmit:%llu, "
-				 "clock:%llu\n",
-				 tsc_start, tsc, tsc - tsc_start);
-		}
+		pr_info ("ovbench ipip "
+			 "ipip_tunnel_xmit_in:%llu "
+			 "ip_tunnel_xmit_in:%llu "
+			 "ip_tunnel_xmit_end:%llu "
+			 "fake_xmit_in:%llu"
+			 "\n",
+			 ipip_ipip_tunnel_xmit_in (skb),
+			 ip_tunnel_xmit_in (skb),
+			 ip_tunnel_xmit_end (skb),
+			 tsc);
+
+	} else if (OVTYPE_IS_GRE (skb)) {
+
+		pr_info ("ovbench gre "
+			 "gre_ipgre_xmit_in:%llu "
+			 "gre_gre_xmit_in:%llu "
+			 "ip_tunnel_xmit_in:%llu "
+			 "ip_tunnel_xmit_end:%llu "
+			 "fake_xmit_in:%llu"
+			 "\n",
+			 gre_ipgre_xmit_in (skb),
+			 gre_gre_xmit_in (skb),
+			 ip_tunnel_xmit_in (skb),
+			 ip_tunnel_xmit_end (skb),
+			 tsc);
+
+	} else if (OVTYPE_IS_VXLAN (skb)) {
+
+		pr_info ("ovbench vxlan "
+			 "vxlan_vxlan_xmit_in:%llu "
+			 "vxlan_vxlan_xmit_one_in:%llu "
+			 "vxlan_vxlan_xmit_skb_in:%llu "
+			 "udp_tunnel_xmit_skb_in:%llu "
+			 "udp_tunnel_xmit_skb_end:%llu"
+			 "fake_xmit_in:%llu"
+			 "\n",
+			 vxlan_vxlan_xmit_in (skb),
+			 vxlan_vxlan_xmit_one_in (skb),
+			 vxlan_vxlan_xmit_skb_in (skb),
+			 udp_tunnel_xmit_skb_in (skb),
+			 udp_tunnel_xmit_skb_end (skb),
+			 tsc);
+
+	} else if (OVTYPE_IS_NSH (skb)) {
+
+		pr_info ("ovbench nsh "
+			 "nsh_xmit_in:%llu "
+			 "nsh_xmit_vxlan_in:%llu "
+			 "udp_tunnel_xmit_skb_in:%llu "
+			 "udp_tunnel_xmit_skb_end:%llu "
+			 "fake_xmit_in:%llu"
+			 "\n",
+			 nsh_xmit_in (skb),
+			 nsh_xmit_vxlan_in (skb),
+			 udp_tunnel_xmit_skb_in (skb),
+			 udp_tunnel_xmit_skb_end (skb),
+			 tsc);
 	}
+
 
 	tx_stats = this_cpu_ptr (dev->tstats);
 	u64_stats_update_begin (&tx_stats->syncp);
