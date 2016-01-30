@@ -72,12 +72,14 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 			 "ip_local_out->ipip_tunnel_xmit_in:%llu "
 			 "ipip_tunnel_xmit_in->ip_tunnel_xmit_in:%llu "
 			 "ip_tunnel_xmit_in->ip_tunnel_xmit_end:%llu "
-			 "ip_tunnel_xmit_end->fake_xmit_in:%llu"
+			 "ip_tunnel_xmit_end->fake_xmit_in:%llu "
+			 "all:%llu"
 			 "\n",
 			 ipip_ipip_tunnel_xmit_in (skb) - netdevgen_xmit (skb),
 			 ip_tunnel_xmit_in (skb) - ipip_ipip_tunnel_xmit_in (skb),
 			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb)
+			 tsc - ip_tunnel_xmit_end (skb),
+			 tsc - netdevgen_xmit (skb)
 			);
 
 	} else if (OVTYPE_IS_GRE (skb)) {
@@ -87,13 +89,15 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 			 "ipgre_xmit_in->__gre_xmit_in:%llu "
 			 "__gre_xmit_in->ip_tunnel_xmit_in:%llu "
 			 "ip_tunnel_xmit_in->ip_tunnel_xmit_end:%llu "
-			 "ip_tunnel_xmit_end->fake_xmit_in:%llu"
+			 "ip_tunnel_xmit_end->fake_xmit_in:%llu "
+			 "all:%llu"
 			 "\n",
 			 gre_ipgre_xmit_in (skb) - netdevgen_xmit (skb),
 			 gre_gre_xmit_in (skb) - gre_ipgre_xmit_in (skb),
 			 ip_tunnel_xmit_in (skb) - gre_gre_xmit_in (skb),
 			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb)
+			 tsc - ip_tunnel_xmit_end (skb),
+			 tsc - netdevgen_xmit (skb)
 			);
 
 	} else if (OVTYPE_IS_VXLAN (skb)) {
@@ -104,14 +108,17 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 			 "vxlan_xmit_one_in->vxlan_xmit_skb_in:%llu "
 			 "vxlan_xmit_skb_in->udp_tunnel_xmit_skb_in:%llu "
 			 "udp_tunnel_xmit_skb_in->udp_tunnel_xmit_skb_end:%llu "
-			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu"
+			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu "
+			 "all:%llu"
 			 "\n",
 			 vxlan_vxlan_xmit_in (skb) - netdevgen_xmit (skb),
 			 vxlan_vxlan_xmit_one_in (skb) - vxlan_vxlan_xmit_in (skb),
 			 vxlan_vxlan_xmit_skb_in (skb) - vxlan_vxlan_xmit_one_in (skb),
 			 udp_tunnel_xmit_skb_in (skb) - vxlan_vxlan_xmit_skb_in (skb),
 			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb));
+			 tsc - udp_tunnel_xmit_skb_end (skb),
+			 tsc - netdevgen_xmit (skb)
+			);
 
 	} else if (OVTYPE_IS_NSH (skb)) {
 
@@ -120,14 +127,25 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 			 "nsh_xmit_in->nsh_xmit_vxlan_in:%llu "
 			 "nsh_xmit_vxlan_in->udp_tunnel_xmit_skb_in:%llu "
 			 "udp_tunnel_xmit_skb_in->udp_tunnel_xmit_skb_end:%llu "
-			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu"
+			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu "
+			 "all:%llu"
 			 "\n",
 			 nsh_xmit_in (skb) - netdevgen_xmit (skb),
 			 nsh_xmit_vxlan_in (skb) - nsh_xmit_in (skb),
 			 udp_tunnel_xmit_skb_in (skb) - nsh_xmit_vxlan_in (skb),
 			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb)
+			 tsc - udp_tunnel_xmit_skb_end (skb),
+			 tsc - netdevgen_xmit (skb)
 			);
+
+	} else if (OVTYPE_IS_NOENCAP (skb)) {
+
+		pr_info ("ovbench noencap "
+			 "ip_local_out->fake_xmit_in:%llu"
+			 "\n",
+			 tsc - netdevgen_xmit (skb)
+			);
+
 	}
 
 	tx_stats = this_cpu_ptr (dev->tstats);

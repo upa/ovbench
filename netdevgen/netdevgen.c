@@ -26,11 +26,11 @@ MODULE_LICENSE ("GPL");
 static bool ndg_thread_running;
 static struct task_struct * ndg_tsk, * ndg_one_tsk;
 
-static int pktlen = 50;
+static int pktlen = 50;	// + ether 14-byte = 64-byte
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
 //static __be32 dstip = 0x02010A0A; /* 10.10.1.2 */
 
-#define IPIP_MODE
+#define NSH_MODE
 
 #ifdef VXLAN_MODE
 static __be32 srcip = 0x010110AC; /* 172.16.1.1 */
@@ -64,7 +64,7 @@ static __be32 dstip = 0x020410AC; /* 172.16.4.2 */
 #ifdef NOENCAP_MODE
 static __be32 srcip = 0x010010AC; /* 172.16.0.1 */
 static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
-#define OVTYPE_MODE 0
+#define OVTYPE_MODE OVTYPE_NOENCAP
 #endif
 
 

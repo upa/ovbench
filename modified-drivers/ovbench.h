@@ -21,12 +21,15 @@ rdtsc(void)
 #define OVTYPE_GRE	2
 #define OVTYPE_VXLAN	3
 #define OVTYPE_NSH	4
+#define OVTYPE_NOENCAP	5
+
 
 #define OVTYPE(skb) (skb->ovbench_type > 0)
 #define OVTYPE_IS_IPIP(skb) (skb->ovbench_type == OVTYPE_IPIP)
 #define OVTYPE_IS_GRE(skb) (skb->ovbench_type == OVTYPE_GRE)
 #define OVTYPE_IS_VXLAN(skb) (skb->ovbench_type == OVTYPE_VXLAN)
 #define OVTYPE_IS_NSH(skb) (skb->ovbench_type == OVTYPE_NSH)
+#define OVTYPE_IS_NOENCAP(skb) (skb->ovbench_type == OVTYPE_NOENCAP)
 
 
 #define ovbench_type(skb) (skb)->ovbench_type
@@ -58,6 +61,7 @@ rdtsc(void)
 #define nsh_xmit_vxlan_in(skb) (skb)->ovbench_timestamp[1]
 // udp_tunnel_xmit_skb_in
 // udp_tunnel_xmit_skb_end
+
 
 
 #endif
