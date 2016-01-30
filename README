@@ -1,0 +1,26 @@
+
+
+memo
+
+kernel skbuff modification
+- include/linux/skbuff.h
+
+        __u8    ovbench_type;
+        __u64   ovbench_timestamp[8];
+
+is added to struct sk_buff.
+
+
+- net/core/skbuff.c
+
+        new->ovbench_type       = old->ovbench_type;
+        new->ovbench_timestamp[0] = old->ovbench_timestamp[0];
+        new->ovbench_timestamp[1] = old->ovbench_timestamp[1];
+        new->ovbench_timestamp[2] = old->ovbench_timestamp[2];
+        new->ovbench_timestamp[3] = old->ovbench_timestamp[3];
+        new->ovbench_timestamp[4] = old->ovbench_timestamp[4];
+        new->ovbench_timestamp[5] = old->ovbench_timestamp[5];
+        new->ovbench_timestamp[6] = old->ovbench_timestamp[6];
+        new->ovbench_timestamp[7] = old->ovbench_timestamp[7];
+
+is added to __copy_skb_header.
