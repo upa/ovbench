@@ -30,7 +30,7 @@ static int pktlen = 50;	// + ether 14-byte = 64-byte
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
 //static __be32 dstip = 0x02010A0A; /* 10.10.1.2 */
 
-#define NSH_MODE
+#define GRETAP_MODE
 
 #ifdef VXLAN_MODE
 static __be32 srcip = 0x010110AC; /* 172.16.1.1 */
@@ -41,6 +41,7 @@ static __be32 dstip = 0x020110AC; /* 172.16.1.2 */
 #ifdef GRETAP_MODE
 static __be32 srcip = 0x010210AC; /* 172.16.2.1 */
 static __be32 dstip = 0x020210AC; /* 172.16.2.2 */
+#define OVTYPE_MODE OVTYPE_GRETAP
 #endif
 
 #ifdef GRE_MODE

@@ -237,6 +237,9 @@ static void __gre_xmit(struct sk_buff *skb, struct net_device *dev,
 	if (OVTYPE_IS_GRE (skb)) {
 		gre_gre_xmit_in (skb) = rdtsc ();
 	}
+	if (OVTYPE_IS_GRETAP (skb)) {
+		gretap_gre_xmit_in (skb) = rdtsc ();
+	}
 
 	tpi.flags = tunnel->parms.o_flags;
 	tpi.proto = proto;
@@ -302,6 +305,10 @@ static netdev_tx_t gre_tap_xmit(struct sk_buff *skb,
 				struct net_device *dev)
 {
 	struct ip_tunnel *tunnel = netdev_priv(dev);
+
+	if (OVTYPE_IS_GRETAP (skb)) {
+		gretap_gre_tap_xmit_in (skb) = rdtsc ();
+	}
 
 	skb = gre_handle_offloads(skb, !!(tunnel->parms.o_flags&TUNNEL_CSUM));
 	if (IS_ERR(skb))

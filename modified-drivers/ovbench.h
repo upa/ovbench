@@ -22,6 +22,7 @@ rdtsc(void)
 #define OVTYPE_VXLAN	3
 #define OVTYPE_NSH	4
 #define OVTYPE_NOENCAP	5
+#define OVTYPE_GRETAP	6
 
 
 #define OVTYPE(skb) (skb->ovbench_type > 0)
@@ -30,7 +31,7 @@ rdtsc(void)
 #define OVTYPE_IS_VXLAN(skb) (skb->ovbench_type == OVTYPE_VXLAN)
 #define OVTYPE_IS_NSH(skb) (skb->ovbench_type == OVTYPE_NSH)
 #define OVTYPE_IS_NOENCAP(skb) (skb->ovbench_type == OVTYPE_NOENCAP)
-
+#define OVTYPE_IS_GRETAP(skb) (skb->ovbench_type == OVTYPE_GRETAP)
 
 #define ovbench_type(skb) (skb)->ovbench_type
 
@@ -50,6 +51,11 @@ rdtsc(void)
 // ip_tunnel_xmit_in
 // ip_tunnel_xmit_end
 
+#define gretap_gre_tap_xmit_in(skb) (skb)->ovbench_timestamp[0]
+#define gretap_gre_xmit_in(skb) (skb)->ovbench_timestamp[1]
+// ip_tunnel_xmit_in
+// ip_tunnel_xmit_end
+
 #define vxlan_vxlan_xmit_in(skb) (skb)->ovbench_timestamp[0]
 #define vxlan_vxlan_xmit_one_in(skb) (skb)->ovbench_timestamp[1]
 #define vxlan_vxlan_xmit_skb_in(skb) (skb)->ovbench_timestamp[2]
@@ -58,7 +64,9 @@ rdtsc(void)
 
 
 #define nsh_xmit_in(skb) (skb)->ovbench_timestamp[0]
-#define nsh_xmit_vxlan_in(skb) (skb)->ovbench_timestamp[1]
+#define nsh_xmit_lookup_end(skb) (skb)->ovbench_timestamp[1]
+#define nsh_xmit_vxlan_in(skb) (skb)->ovbench_timestamp[2]
+#define nsh_xmit_vxlan_skb_in(skb) (skb)->ovbench_timestamp[6]
 // udp_tunnel_xmit_skb_in
 // udp_tunnel_xmit_skb_end
 
