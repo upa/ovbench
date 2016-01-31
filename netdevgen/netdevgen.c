@@ -30,43 +30,28 @@ static int pktlen = 50;	// + ether 14-byte = 64-byte
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
 //static __be32 dstip = 0x02010A0A; /* 10.10.1.2 */
 
-#define GRETAP_MODE
 
-#ifdef VXLAN_MODE
-static __be32 srcip = 0x010110AC; /* 172.16.1.1 */
-static __be32 dstip = 0x020110AC; /* 172.16.1.2 */
-#define OVTYPE_MODE OVTYPE_VXLAN
-#endif
+static __be32 srcip_vxlan = 0x010110AC; /* 172.16.1.1 */
+static __be32 dstip_vxlan = 0x020110AC; /* 172.16.1.2 */
 
-#ifdef GRETAP_MODE
-static __be32 srcip = 0x010210AC; /* 172.16.2.1 */
-static __be32 dstip = 0x020210AC; /* 172.16.2.2 */
-#define OVTYPE_MODE OVTYPE_GRETAP
-#endif
+static __be32 srcip_gretap = 0x010210AC; /* 172.16.2.1 */
+static __be32 dstip_gretap = 0x020210AC; /* 172.16.2.2 */
 
-#ifdef GRE_MODE
-static __be32 srcip = 0x010310AC; /* 172.16.3.1 */
-static __be32 dstip = 0x020310AC; /* 172.16.3.2 */
-#define OVTYPE_MODE OVTYPE_GRE
-#endif
+static __be32 srcip_gre = 0x010310AC; /* 172.16.3.1 */
+static __be32 dstip_gre = 0x020310AC; /* 172.16.3.2 */
 
-#ifdef IPIP_MODE
-static __be32 srcip = 0x010510AC; /* 172.16.4.1 */
-static __be32 dstip = 0x020510AC; /* 172.16.4.2 */
-#define OVTYPE_MODE OVTYPE_IPIP
-#endif
+static __be32 srcip_ipip = 0x010510AC; /* 172.16.4.1 */
+static __be32 dstip_ipip = 0x020510AC; /* 172.16.4.2 */
 
-#ifdef NSH_MODE
-static __be32 srcip = 0x010410AC; /* 172.16.4.1 */
-static __be32 dstip = 0x020410AC; /* 172.16.4.2 */
-#define OVTYPE_MODE OVTYPE_NSH
-#endif
+static __be32 srcip_nsh = 0x010410AC; /* 172.16.4.1 */
+static __be32 dstip_nsh = 0x020410AC; /* 172.16.4.2 */
 
-#ifdef NOENCAP_MODE
-static __be32 srcip = 0x010010AC; /* 172.16.0.1 */
-static __be32 dstip = 0x020010AC; /* 172.16.0.2 */
-#define OVTYPE_MODE OVTYPE_NOENCAP
-#endif
+static __be32 srcip_noencap = 0x010010AC; /* 172.16.0.1 */
+static __be32 dstip_noencap = 0x020010AC; /* 172.16.0.2 */
+
+static __be32 srcip;
+static __be32 dstip;
+static int ovtype;
 
 
 #define PROC_NAME "driver/netdevgen"
@@ -127,7 +112,7 @@ netdevgen_build_packet (void)
 	skb_dst_drop (skb);
 	skb_dst_set (skb, &rt->dst);
 	
-	skb->ovbench_type = OVTYPE_MODE;
+	skb->ovbench_type = ovtype;
 
 	return skb;
 }
@@ -246,11 +231,59 @@ static ssize_t
 proc_write(struct file *fp, const char *buf, size_t size, loff_t *off)
 {
 	if (strncmp (buf, "xmit", 4) == 0) {
+
 		start_netdevgen_xmit_one_thread ();
+
+	} else if (strncmp (buf, "vxlan", 5) == 0) {
+
+		srcip = srcip_vxlan;
+		dstip = dstip_vxlan;
+		ovtype = OVTYPE_VXLAN;
+		start_netdevgen_xmit_one_thread ();
+		
+	} else if (strncmp (buf, "gretap", 6) == 0) {
+
+		srcip = srcip_gretap;
+		dstip = dstip_gretap;
+		ovtype = OVTYPE_GRETAP;
+		start_netdevgen_xmit_one_thread ();
+		
+	} else if (strncmp (buf, "gre", 3) == 0) {
+
+		srcip = srcip_gre;
+		dstip = dstip_gre;
+		ovtype = OVTYPE_GRE;
+		start_netdevgen_xmit_one_thread ();
+		
+	} else if (strncmp (buf, "ipip", 4) == 0) {
+
+		srcip = srcip_ipip;
+		dstip = dstip_ipip;
+		ovtype = OVTYPE_IPIP;
+		start_netdevgen_xmit_one_thread ();
+		
+	} else if (strncmp (buf, "nsh", 3) == 0) {
+
+		srcip = srcip_nsh;
+		dstip = dstip_nsh;
+		ovtype = OVTYPE_NSH;
+		start_netdevgen_xmit_one_thread ();
+		
+	} else if (strncmp (buf, "noencap", 7) == 0) {
+
+		srcip = srcip_noencap;
+		dstip = dstip_noencap;
+		ovtype = OVTYPE_NOENCAP;
+		start_netdevgen_xmit_one_thread ();
+		
 	} else if (strncmp (buf, "start", 5) == 0) {
+
 		start_netdevgen_thread ();
+
 	} else if (strncmp (buf, "stop", 4) == 0) {
+
 		stop_netdevgen_thread ();
+
 	} else {
 		pr_info ("invalid command\n");
 	}

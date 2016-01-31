@@ -172,7 +172,7 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 			 tsc - netdevgen_xmit (skb)
 			);
 #endif
-		pr_info ("ovb vxlan"
+		pr_info ("ovb vxlan "
 			 "xmit-path-1st:%llu "
 			 "fdb-lookup:%llu "
 			 "routing-lookup:%llu "
