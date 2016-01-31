@@ -100,23 +100,6 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 
 	} else if (OVTYPE_IS_GRE (skb)) {
 
-#if 0
-		pr_info ("ovb gre "
-			 "ip_local_out->ipgre_xmit_in:%llu "
-			 "ipgre_xmit_in->__gre_xmit_in:%llu "
-			 "__gre_xmit_in->ip_tunnel_xmit_in:%llu "
-			 "ip_tunnel_xmit_in->ip_tunnel_xmit_end:%llu "
-			 "ip_tunnel_xmit_end->fake_xmit_in:%llu "
-			 "all:%llu"
-			 "\n",
-			 gre_ipgre_xmit_in (skb) - netdevgen_xmit (skb),
-			 gre_gre_xmit_in (skb) - gre_ipgre_xmit_in (skb),
-			 ip_tunnel_xmit_in (skb) - gre_gre_xmit_in (skb),
-			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
-#endif
 		pr_info ("ovb gre "
 			 "xmit-path-1st:%llu "
 			 "ndo_start_xmit:%llu "
