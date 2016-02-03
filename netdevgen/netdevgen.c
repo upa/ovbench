@@ -23,10 +23,18 @@ MODULE_AUTHOR ("upa@haeena.net");
 MODULE_DESCRIPTION ("netdevgen");
 MODULE_LICENSE ("GPL");
 
-static bool ndg_thread_running;
+static bool ndg_thread_running = false;
 static struct task_struct * ndg_tsk, * ndg_one_tsk;
 
-static int pktlen = 50;	// + ether 14-byte = 64-byte
+//static int pktlen = 46;	// + ether 14-byte = 60-byte
+//static int pktlen = 1486;	// + ether 14-byte = 1500-byte
+
+//static int pktlen = PKTLEN;	// 1508
+
+static int pktlen __read_mostly = 46;
+module_param_named (pktlen, pktlen, int, 0444);
+MODULE_PARM_DESC (pktlen, "packet length - eth header and preamble");
+
 //static __be32 srcip = 0x01010A0A; /* 10.10.1.1 */
 //static __be32 dstip = 0x02010A0A; /* 10.10.1.2 */
 
@@ -53,6 +61,7 @@ static __be32 srcip;
 static __be32 dstip;
 static int ovtype;
 
+static bool measure_pps = true;
 
 #define PROC_NAME "driver/netdevgen"
 
@@ -111,8 +120,11 @@ netdevgen_build_packet (void)
 	}
 	skb_dst_drop (skb);
 	skb_dst_set (skb, &rt->dst);
-	
-	skb->ovbench_type = ovtype;
+
+	if (measure_pps)
+		skb->ovbench_type = 0;
+	else
+		skb->ovbench_type = ovtype;
 
 	return skb;
 }
@@ -156,10 +168,6 @@ netdevgen_thread (void * arg)
 
 	while (!kthread_should_stop ()) {
 
-		if (atomic_read (&start) == 0) {
-			break;
-		}
-
 		pskb = skb_clone (skb, GFP_KERNEL);
 		if (!pskb) {
 			pr_err ("failed to clone skb\n");
@@ -173,7 +181,7 @@ err_out:
 	//kfree_skb (skb);
 	ndg_thread_running = false;
 
-	pr_info ("netdevgen thread finished\n");
+	pr_info ("netdevgen: thread finished\n");
 
 	return 0;
 }
@@ -182,20 +190,22 @@ err_out:
 static void
 start_netdevgen_thread (void)
 {
-	if (!atomic_read (&start)) {
-		pr_info ("netdevgen: thread start\n");
-		atomic_set (&start, 1);
-		ndg_tsk = kthread_run (netdevgen_thread, NULL, "netdevgen");
+	if (ndg_tsk && ndg_thread_running) {
+		pr_info ("netdecgen: thread already running\n");
+		return;
 	}
+	
+	ndg_tsk = kthread_run (netdevgen_thread, NULL, "netdevgen");
+	pr_info ("netdevgen: thread start\n");
 }
 
 static void
 stop_netdevgen_thread (void)
 {
-	if (!atomic_read (&start)) {
-		pr_info ("netdevgen: thread stop\n");
-		atomic_set (&start, 0);
-	}
+	if (ndg_tsk && ndg_thread_running)
+		kthread_stop (ndg_tsk);
+
+	pr_info ("netdevgen: thread stop\n");
 }
 
 static void
@@ -239,42 +249,60 @@ proc_write(struct file *fp, const char *buf, size_t size, loff_t *off)
 		srcip = srcip_vxlan;
 		dstip = dstip_vxlan;
 		ovtype = OVTYPE_VXLAN;
-		start_netdevgen_xmit_one_thread ();
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
 		
 	} else if (strncmp (buf, "gretap", 6) == 0) {
 
 		srcip = srcip_gretap;
 		dstip = dstip_gretap;
 		ovtype = OVTYPE_GRETAP;
-		start_netdevgen_xmit_one_thread ();
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
 		
 	} else if (strncmp (buf, "gre", 3) == 0) {
 
 		srcip = srcip_gre;
 		dstip = dstip_gre;
 		ovtype = OVTYPE_GRE;
-		start_netdevgen_xmit_one_thread ();
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
 		
 	} else if (strncmp (buf, "ipip", 4) == 0) {
 
 		srcip = srcip_ipip;
 		dstip = dstip_ipip;
 		ovtype = OVTYPE_IPIP;
-		start_netdevgen_xmit_one_thread ();
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
 		
 	} else if (strncmp (buf, "nsh", 3) == 0) {
 
 		srcip = srcip_nsh;
 		dstip = dstip_nsh;
 		ovtype = OVTYPE_NSH;
-		start_netdevgen_xmit_one_thread ();
-		
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
+
 	} else if (strncmp (buf, "noencap", 7) == 0) {
 
 		srcip = srcip_noencap;
 		dstip = dstip_noencap;
 		ovtype = OVTYPE_NOENCAP;
-		start_netdevgen_xmit_one_thread ();
+		if (!measure_pps)
+			start_netdevgen_xmit_one_thread ();
+		else
+			start_netdevgen_thread ();
 		
 	} else if (strncmp (buf, "start", 5) == 0) {
 
@@ -316,6 +344,8 @@ netdevgen_init (void)
 	}
 
 	pr_info ("netdevgen loaded\n");
+	if (measure_pps)
+		pr_info ("measurement pps mode, pktlen is %d\n", pktlen);
 		
 	return 0;
 }
