@@ -20,6 +20,9 @@
 
 #include "../modified-drivers/ovbench.h"
 
+#define MIN_MTU		46
+#define MAX_MTU		65535
+
 
 #define HDRROOM (sizeof (struct ethhdr) + sizeof (struct iphdr) + \
 		 sizeof (struct udphdr))
@@ -237,6 +240,15 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 }
 
 static int
+fake_change_mtu (struct net_device * dev, int new_mtu)
+{
+	if (!(new_mtu >= MIN_MTU && new_mtu <= MAX_MTU))
+		return -EINVAL;
+	dev->mtu = new_mtu;
+	return 0;
+}
+
+static int
 fake_init (struct net_device * dev)
 {
 	dev->tstats = netdev_alloc_pcpu_stats (struct pcpu_sw_netstats);
@@ -259,7 +271,7 @@ static const struct net_device_ops fake_netdev_ops = {
 	.ndo_uninit		= fake_uninit,
 	.ndo_start_xmit		= fake_xmit,
 	.ndo_get_stats64	= ip_tunnel_get_stats64,	/* XXX */
-	.ndo_change_mtu		= eth_change_mtu,
+	.ndo_change_mtu		= fake_change_mtu,
 	.ndo_validate_addr	= eth_validate_addr,
 	.ndo_set_mac_address	= eth_mac_addr,
 };
