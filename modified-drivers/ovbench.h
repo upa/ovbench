@@ -35,11 +35,13 @@ rdtsc(void)
 
 #define ovbench_type(skb) (skb)->ovbench_type
 
-#define netdevgen_xmit(skb) (skb)->ovbench_timestamp[3]
-#define udp_tunnel_xmit_skb_in(skb) (skb)->ovbench_timestamp[4]
-#define udp_tunnel_xmit_skb_end(skb) (skb)->ovbench_timestamp[5]
-#define ip_tunnel_xmit_in(skb) (skb)->ovbench_timestamp[6]
-#define ip_tunnel_xmit_end(skb) (skb)->ovbench_timestamp[7]
+#define netdevgen_xmit(skb) (skb)->ovbench_timestamp[9]
+#define udp_tunnel_xmit_skb_in(skb) (skb)->ovbench_timestamp[10]
+#define ip_tunnel_xmit_in(skb) (skb)->ovbench_timestamp[11]
+#define iptunnel_xmit_in(skb) (skb)->ovbench_timestamp[12]
+#define ip_local_out_sk_in(skb) (skb)->ovbench_timestamp[13]
+#define dst_neigh_output_in(skb) (skb)->ovbench_timestamp[14]
+#define dev_queue_xmit_in(skb) (skb)->ovbench_timestamp[15]
 
 
 #define ipip_ipip_tunnel_xmit_in(skb) (skb)->ovbench_timestamp[0]
@@ -66,7 +68,7 @@ rdtsc(void)
 #define nsh_xmit_in(skb) (skb)->ovbench_timestamp[0]
 #define nsh_xmit_lookup_end(skb) (skb)->ovbench_timestamp[1]
 #define nsh_xmit_vxlan_in(skb) (skb)->ovbench_timestamp[2]
-#define nsh_xmit_vxlan_skb_in(skb) (skb)->ovbench_timestamp[6]
+#define nsh_xmit_vxlan_skb_in(skb) (skb)->ovbench_timestamp[3]
 // udp_tunnel_xmit_skb_in
 // udp_tunnel_xmit_skb_end
 
