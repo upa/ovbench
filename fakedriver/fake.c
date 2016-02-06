@@ -18,7 +18,7 @@
 #include <net/net_namespace.h>
 #include <net/netns/generic.h>
 
-#include "../modified-drivers/ovbench.h"
+//#include "../modified-drivers/ovbench.h"
 
 #define MIN_MTU		46
 #define MAX_MTU		65535
@@ -59,7 +59,8 @@ struct fake_net {
 	struct list_head	dev_list;	/* device list */
 };
 
-
+#define ts(start, end) (end - start)
+#define pr(prefix, name, value) pr_info (prefix " " name ":%llu ", value)
 
 static netdev_tx_t
 fake_xmit (struct sk_buff * skb, struct net_device * dev)
@@ -71,162 +72,153 @@ fake_xmit (struct sk_buff * skb, struct net_device * dev)
 
 	if (OVTYPE_IS_IPIP (skb)) {
 
-#if 0
-		pr_info ("ovb ipip "
-			 "ip_local_out->ipip_tunnel_xmit_in:%llu "
-			 "ipip_tunnel_xmit_in->ip_tunnel_xmit_in:%llu "
-			 "ip_tunnel_xmit_in->ip_tunnel_xmit_end:%llu "
-			 "ip_tunnel_xmit_end->fake_xmit_in:%llu "
-			 "all:%llu"
-			 "\n",
-			 ipip_ipip_tunnel_xmit_in (skb) - netdevgen_xmit (skb),
-			 ip_tunnel_xmit_in (skb) - ipip_ipip_tunnel_xmit_in (skb),
-			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
-#endif
+		pr ("ovb ipip", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb ipip", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb ipip", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), ipip_ipip_tunnel_xmit_in (skb)));
 
-		pr_info ("ovb ipip "
-			 "xmit-path-1st:%llu "
-			 "ndo_start_xmit:%llu "
-			 "routing-lookup:%llu "
-			 "xmit-path-2nd:%llu "
-			 "all:%llu"
-			 "\n",
-			 ipip_ipip_tunnel_xmit_in (skb) - netdevgen_xmit (skb),
-			 ip_tunnel_xmit_in (skb) - ipip_ipip_tunnel_xmit_in (skb),
-			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb ipip", "ndo_start_xmit",
+		    ts (ipip_ipip_tunnel_xmit_in (skb), ip_tunnel_xmit_in (skb)));
+		pr ("ovb ipip", "routing-lookup",
+		    ts (ip_tunnel_xmit_in (skb), iptunnel_xmit_in (skb)));
+		pr ("ovb ipip", "build-outer-ip",
+		    ts (iptunnel_xmit_in (skb), ip_local_out_sk_in_encaped (skb)));
+
+		pr ("ovb ipip", "2nd-l3-path",
+		    ts (ip_local_out_sk_in_encaped (skb), dst_neigh_output_in_encaped (skb)));
+		pr ("ovb ipip", "2nd-l2-path",
+		    ts (dst_neigh_output_in_encaped (skb), dev_queue_xmit_in_encaped (skb)));
+		pr ("ovb ipip", "2nd-l1-path",
+		    ts (dev_queue_xmit_in_encaped (skb), tsc));
+
+		pr_info ("\n");
 
 	} else if (OVTYPE_IS_GRE (skb)) {
 
-		pr_info ("ovb gre "
-			 "xmit-path-1st:%llu "
-			 "ndo_start_xmit:%llu "
-			 "build-gre-header:%llu "
-			 "routing-lookup:%llu "
-			 "xmit-path-2nd:%llu "
-			 "all:%llu "
-			 "\n",
-			 gre_ipgre_xmit_in (skb) - netdevgen_xmit (skb),
-			 gre_gre_xmit_in (skb) - gre_ipgre_xmit_in (skb),
-			 ip_tunnel_xmit_in (skb) - gre_gre_xmit_in (skb),
-			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb gre", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb gre", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb gre", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), gre_ipgre_xmit_in (skb)));
+
+		pr ("ovb gre", "ndo_start_xmit",
+		    ts (gre_ipgre_xmit_in (skb), gre_gre_xmit_in (skb)));
+		pr ("ovb gre", "build-gre-header",
+		    ts (gre_gre_xmit_in (skb), ip_tunnel_xmit_in (skb)));
+		pr ("ovb gre", "routing-lookup",
+		    ts (ip_tunnel_xmit_in (skb), iptunnel_xmit_in (skb)));
+		pr ("ovb gre", "build-outer-ip",
+		    ts (iptunnel_xmit_in (skb), ip_local_out_sk_in_encaped (skb)));
+
+		pr ("ovb gre", "2nd-l3-path",
+		    ts (ip_local_out_sk_in_encaped (skb), dst_neigh_output_in_encaped (skb)));
+		pr ("ovb gre", "2nd-l2-path",
+		    ts (dst_neigh_output_in_encaped (skb), dev_queue_xmit_in_encaped (skb)));
+		pr ("ovb gre", "2nd-l1-path",
+		    ts (dev_queue_xmit_in_encaped (skb), tsc));
+
+		pr_info ("\n");
 
 	} else if (OVTYPE_IS_GRETAP (skb)) {
 
-		pr_info ("ovb gretap "
-			 "xmit-path-1st:%llu "
-			 "ndo_start_xmit:%llu "
-			 "build-gre-header:%llu "
-			 "routing-lookup:%llu "
-			 "xmit-path-2nd:%llu "
-			 "all:%llu "
-			 "\n",
-			 gretap_gre_tap_xmit_in (skb) - netdevgen_xmit (skb),
-			 gretap_gre_xmit_in (skb) - gretap_gre_tap_xmit_in (skb),
-			 ip_tunnel_xmit_in (skb) - gre_gre_xmit_in (skb),
-			 ip_tunnel_xmit_end (skb) - ip_tunnel_xmit_in (skb),
-			 tsc - ip_tunnel_xmit_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb gretap", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb gretap", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb gretap", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), gretap_gre_tap_xmit_in (skb)));
+
+		pr ("ovb gretap", "ndo_start_xmit",
+		    ts (gretap_gre_tap_xmit_in (skb), gre_gre_xmit_in (skb)));
+		pr ("ovb gretap", "build-gre-header",
+		    ts (gre_gre_xmit_in (skb), ip_tunnel_xmit_in (skb)));
+
+		pr ("ovb gretap", "routing-lookup",
+		    ts (ip_tunnel_xmit_in (skb), iptunnel_xmit_in (skb)));
+		pr ("ovb gretap", "build-outer-ip",
+		    ts (iptunnel_xmit_in (skb), ip_local_out_sk_in_encaped (skb)));
+		pr ("ovb gretap", "2nd-l3-path",
+		    ts (ip_local_out_sk_in_encaped (skb), dst_neigh_output_in_encaped (skb)));
+		pr ("ovb gretap", "2nd-l2-path",
+		    ts (dst_neigh_output_in_encaped (skb), dev_queue_xmit_in_encaped (skb)));
+		pr ("ovb gretap", "2nd-l1-path",
+		    ts (dev_queue_xmit_in_encaped (skb), tsc));
+
+		pr_info ("\n");
 
 	}  else if (OVTYPE_IS_VXLAN (skb)) {
 
-#if 0
-		pr_info ("ovb vxlan "
-			 "ip_local_out->vxlan_xmit_in:%llu "
-			 "vxlan_xmit_in->vxlan_xmit_one_in:%llu "
-			 "vxlan_xmit_one_in->vxlan_xmit_skb_in:%llu "
-			 "vxlan_xmit_skb_in->udp_tunnel_xmit_skb_in:%llu "
-			 "udp_tunnel_xmit_skb_in->udp_tunnel_xmit_skb_end:%llu "
-			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu "
-			 "all:%llu"
-			 "\n",
-			 vxlan_vxlan_xmit_in (skb) - netdevgen_xmit (skb),
-			 vxlan_vxlan_xmit_one_in (skb) - vxlan_vxlan_xmit_in (skb),
-			 vxlan_vxlan_xmit_skb_in (skb) - vxlan_vxlan_xmit_one_in (skb),
-			 udp_tunnel_xmit_skb_in (skb) - vxlan_vxlan_xmit_skb_in (skb),
-			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
-#endif
-		pr_info ("ovb vxlan "
-			 "xmit-path-1st:%llu "
-			 "fdb-lookup:%llu "
-			 "routing-lookup:%llu "
-			 "build-vxlan-header:%llu "
-			 "build-udp-header:%llu "
-			 "xmit-path-2nd:%llu "
-			 "all:%llu "
-			 "\n",
-			 vxlan_vxlan_xmit_in (skb) - netdevgen_xmit (skb),
-			 vxlan_vxlan_xmit_one_in (skb) - vxlan_vxlan_xmit_in (skb),
-			 vxlan_vxlan_xmit_skb_in (skb) - vxlan_vxlan_xmit_one_in (skb),
-			 udp_tunnel_xmit_skb_in (skb) - vxlan_vxlan_xmit_skb_in (skb),
-			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb vxlan", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb vxlan", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb vxlan", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), vxlan_vxlan_xmit_in (skb)));
+
+		pr ("ovb vxlan", "fdb-lookup",
+		    ts (vxlan_vxlan_xmit_in (skb), vxlan_vxlan_xmit_one_in (skb)));
+		pr ("ovb vxlan", "routing-lookup",
+		    ts (vxlan_vxlan_xmit_one_in (skb), vxlan_vxlan_xmit_skb_in (skb)));
+		pr ("ovb vxlan", "build-vxlan-header",
+		    ts (vxlan_vxlan_xmit_skb_in (skb), udp_tunnel_xmit_skb_in (skb)));
+		pr ("ovb vxlan", "build-udp-header",
+		    ts (udp_tunnel_xmit_skb_in (skb), iptunnel_xmit_in (skb)));
+
+		pr ("ovb vxlan", "build-outer-ip",
+		    ts (iptunnel_xmit_in (skb), ip_local_out_sk_in_encaped (skb)));
+		pr ("ovb vxlan", "2nd-l3-path",
+		    ts (ip_local_out_sk_in_encaped (skb), dst_neigh_output_in_encaped (skb)));
+		pr ("ovb vxlan", "2nd-l2-path",
+		    ts (dst_neigh_output_in_encaped (skb), dev_queue_xmit_in_encaped (skb)));
+		pr ("ovb vxlan", "2nd-l1-path",
+		    ts (dev_queue_xmit_in_encaped (skb), tsc));
+
+		pr_info ("\n");
 
 	} else if (OVTYPE_IS_NSH (skb)) {
 
-#if 0
-		pr_info ("ovb nsh "
-			 "ip_local_out->nsh_xmit_in:%llu "
-			 "nsh_xmit_in->nsh_xmit_lookup_end:%llu "
-			 "nsh_xmit_lookup_end->nsh_xmit_vxlan_in:%llu "
-			 "nsh_xmit_vxlan_in->nsh_xmit_vxlan_skb_in:%llu "
-			 "nsh_xmit_vxlan_skb_in->udp_tunnel_xmit_skb_in:%llu "
-			 "udp_tunnel_xmit_skb_in->udp_tunnel_xmit_skb_end:%llu "
-			 "udp_tunnel_xmit_skb_end->fake_xmit_in:%llu "
-			 "all:%llu"
-			 "\n",
-			 nsh_xmit_in (skb) - netdevgen_xmit (skb),
-			 nsh_xmit_lookup_end (skb) - nsh_xmit_in (skb),
-			 nsh_xmit_vxlan_in (skb) - nsh_xmit_lookup_end (skb),
-			 nsh_xmit_vxlan_skb_in (skb) - nsh_xmit_vxlan_in (skb),
-			 udp_tunnel_xmit_skb_in (skb) - nsh_xmit_vxlan_skb_in (skb),
-			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
-#endif
-		pr_info ("ovb nsh "
-			 "xmit-path-1st:%llu "
-			 "table-lookup:%llu "
-			 "build-nsh-header:%llu "
-			 "routing-lookup:%llu "
-			 "build-vxlan-header:%llu "
-			 "build-udp-header:%llu "
-			 "xmit-path-2nd:%llu "
-			 "all:%llu"
-			 "\n",
-			 nsh_xmit_in (skb) - netdevgen_xmit (skb),
-			 nsh_xmit_lookup_end (skb) - nsh_xmit_in (skb),
-			 nsh_xmit_vxlan_in (skb) - nsh_xmit_lookup_end (skb),
-			 nsh_xmit_vxlan_skb_in (skb) - nsh_xmit_vxlan_in (skb),
-			 udp_tunnel_xmit_skb_in (skb) - nsh_xmit_vxlan_skb_in (skb),
-			 udp_tunnel_xmit_skb_end (skb) - udp_tunnel_xmit_skb_in (skb),
-			 tsc - udp_tunnel_xmit_skb_end (skb),
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb nsh", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb nsh", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb nsh", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), nsh_xmit_in (skb)));
+
+		pr ("ovb nsh", "table-lookup",
+		    ts (nsh_xmit_in (skb), nsh_xmit_lookup_end (skb)));
+		pr ("ovb nsh", "build-nsh-header",
+		    ts (nsh_xmit_lookup_end (skb), nsh_xmit_vxlan_in (skb)));
+		pr ("ovb nsh", "routing-lookup",
+		    ts (nsh_xmit_vxlan_in (skb), nsh_xmit_vxlan_skb_in (skb)));
+		pr ("ovb nsh", "build-vxlan-header",
+		    ts (nsh_xmit_vxlan_skb_in (skb), udp_tunnel_xmit_skb_in (skb)));
+
+		pr ("ovb nsh", "build-udp-header",
+		    ts (udp_tunnel_xmit_skb_in (skb), iptunnel_xmit_in (skb)));
+		pr ("ovb nsh", "build-outer-ip",
+		    ts (iptunnel_xmit_in (skb), ip_local_out_sk_in_encaped (skb)));
+		pr ("ovb nsh", "2nd-l3-path",
+		    ts (ip_local_out_sk_in_encaped (skb), dst_neigh_output_in_encaped (skb)));
+		pr ("ovb nsh", "2nd-l2-path",
+		    ts (dst_neigh_output_in_encaped (skb), dev_queue_xmit_in_encaped (skb)));
+		pr ("ovb nsh", "2nd-l1-path",
+		    ts (dev_queue_xmit_in_encaped (skb), tsc));
+
+		pr_info ("\n");
 
 	} else if (OVTYPE_IS_NOENCAP (skb)) {
 
-		pr_info ("ovb noencap "
-			 "xmit-path:%llu"
-			 "\n",
-			 tsc - netdevgen_xmit (skb)
-			);
+		pr ("ovb noencap", "1st-l3-path",
+		    ts (ip_local_out_sk_in (skb), dst_neigh_output_in (skb)));
+		pr ("ovb noencap", "1st-l2-path",
+		    ts (dst_neigh_output_in (skb), dev_queue_xmit_in (skb)));
+		pr ("ovb noencap", "1st-l1-path",
+		    ts (dev_queue_xmit_in (skb), tsc));
 
+		pr_info ("\n");
 	}
 	tx_stats = this_cpu_ptr (dev->tstats);
 	u64_stats_update_begin (&tx_stats->syncp);

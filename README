@@ -6,14 +6,16 @@ kernel skbuff modification
 - include/linux/skbuff.h
 
         __u8    ovbench_type;
-        __u64   ovbench_timestamp[8];
+        __u8    ovbench_encaped;
+        __u64   ovbench_timestamp[16];
 
 is added to struct sk_buff.
 
-
 - net/core/skbuff.c
 
-        new->ovbench_type       = old->ovbench_type;
+        /* copy ovbench params and time stamps*/
+	new->ovbench_type       = old->ovbench_type;
+	new->ovbench_encaped    = old->ovbench_encaped;
         new->ovbench_timestamp[0] = old->ovbench_timestamp[0];
         new->ovbench_timestamp[1] = old->ovbench_timestamp[1];
         new->ovbench_timestamp[2] = old->ovbench_timestamp[2];
@@ -22,5 +24,20 @@ is added to struct sk_buff.
         new->ovbench_timestamp[5] = old->ovbench_timestamp[5];
         new->ovbench_timestamp[6] = old->ovbench_timestamp[6];
         new->ovbench_timestamp[7] = old->ovbench_timestamp[7];
+        new->ovbench_timestamp[8] = old->ovbench_timestamp[8];
+	new->ovbench_timestamp[9] = old->ovbench_timestamp[9];
+	new->ovbench_timestamp[10] = old->ovbench_timestamp[10];
+	new->ovbench_timestamp[11] = old->ovbench_timestamp[11];	
+	new->ovbench_timestamp[12] = old->ovbench_timestamp[12];
+	new->ovbench_timestamp[13] = old->ovbench_timestamp[13];
+	new->ovbench_timestamp[14] = old->ovbench_timestamp[14];
+	new->ovbench_timestamp[15] = old->ovbench_timestamp[15];
 
 is added to __copy_skb_header.
+
+
+and,
+	if (OVTYPE (skb)) {
+		timestamp_macro (skb) = rdtsc ();
+	}
+is added to iptunnel_xmit, ip_local_out_sk, dst_neigh_output, dev_queue_xmit, 

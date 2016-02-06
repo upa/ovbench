@@ -16,7 +16,7 @@
 #include <net/route.h>
 #include <net/net_namespace.h>
 
-#include "../modified-drivers/ovbench.h"
+//#include "../modified-drivers/ovbench.h"
 
 
 MODULE_AUTHOR ("upa@haeena.net");
@@ -61,7 +61,7 @@ static __be32 srcip;
 static __be32 dstip;
 static int ovtype;
 
-static bool measure_pps = true;
+static bool measure_pps = false;
 
 #define PROC_NAME "driver/netdevgen"
 
@@ -91,6 +91,9 @@ netdevgen_build_packet (void)
 	skb_set_network_header (skb, 0);
 	skb_set_transport_header (skb, sizeof (*ip));
 
+	memset(IPCB(skb), 0, sizeof(*IPCB(skb)));
+
+
 	ip = (struct iphdr *) skb_network_header (skb);
 	ip->ihl		= 5;
 	ip->version	= 4;
@@ -110,6 +113,8 @@ netdevgen_build_packet (void)
 	udp->dest	= 0;
 	udp->len	= htons (pktlen - sizeof (*ip));
 
+	__ip_select_ident(ip, skb_shinfo(skb)->gso_segs ?: 1);	
+
 	memset (&fl4, 0, sizeof (fl4));
 	fl4.saddr = srcip;
 	fl4.daddr = dstip;
@@ -120,6 +125,8 @@ netdevgen_build_packet (void)
 	}
 	skb_dst_drop (skb);
 	skb_dst_set (skb, &rt->dst);
+
+	skb->ovbench_encaped = 0;
 
 	if (measure_pps)
 		skb->ovbench_type = 0;
